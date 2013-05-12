@@ -1,4 +1,5 @@
 package lucyds {
+
 	import lucyds.states.GameOverState;
 	import lucyds.states.WinState;
 	import org.flixel.FlxEmitter;
@@ -19,6 +20,10 @@ package lucyds {
 		public static var mazeMin			: int = 0;
 		public static var mazeMax			: int = 0;
 		public static var tempsScore		: Number = 0;
+		public static var nbWin				: int;
+		public static var nbDbT				: int;
+		public static var nbDbF				: int;
+		public static var nbDbM				: int;
 		
 		//Save
 		
@@ -60,23 +65,42 @@ package lucyds {
 			gameSave.bind("mySave");
 			trace(gameSave.data.levelPlayed);
 			
-			if(gameSave.data.levelPlayed >= true)
+			if(gameSave.data.levelPlayed == true)
 			{
-				dByFloor = gameSave.data.dByFloor; 
-				dByMonster = gameSave.data.dByMonster; 
-				dByTime = gameSave.data.dByTime; 
-				mazeMin = gameSave.data.mazeMin; 
-				mazeMax = gameSave.data.mazeMax;
+				dByFloor 					= gameSave.data.dByFloor; 
+				dByMonster 					= gameSave.data.dByMonster; 
+				dByTime 					= gameSave.data.dByTime; 
+				mazeMin 					= gameSave.data.mazeMin; 
+				mazeMax 					= gameSave.data.mazeMax;
+				nbWin 						= gameSave.data.nbWin;
+				nbDbT 						= gameSave.data.nbDbT;
+				nbDbF 						= gameSave.data.nbDbF;
+				nbDbM 						= gameSave.data.nbDbM;
 			}
 			
 			else 										//si c'est la première partie jouée
 			{
-				dByFloor = 1; 
-				dByMonster = 1; 
-				dByTime = 1; 
-				mazeMin = 0; 
-				mazeMax = 0;				
+				dByFloor 					= 0.5; 
+				dByMonster 					= 1; 
+				dByTime 					= 1; 
+				mazeMin 					= 0; 
+				mazeMax 					= 0;
+				nbWin 						= 10;
+				nbDbT 						= 10;
+				nbDbF 						= 20;
+				nbDbM 						= 10;			
+				
+				gameSave.data.dByFloor 		= dByFloor;
+				gameSave.data.dByMonster 	= dByMonster;
+				gameSave.data.dByTime 		= dByTime;
+				gameSave.data.mazeMin 		= mazeMin;
+				gameSave.data.mazeMax		= mazeMax;
+				gameSave.data.nbDbT 		= nbDbT;
+				gameSave.data.nbDbF 		= nbDbF;
+				gameSave.data.nbDbM 		= nbDbM;
+				gameSave.data.nbWin 		= nbWin;
 			}
+			
 
 			//stage
 			
@@ -87,6 +111,8 @@ package lucyds {
 			groundMap = new Maze();
 			groundMap.createColorPath(this);
 			add(groundMap);
+			
+			trace(nbWin,nbDbT,nbDbF,nbDbM);
 			
 			lucie = new Lucie(groundMap.startX, groundMap.startY);
 			add(lucie);
@@ -189,7 +215,7 @@ package lucyds {
 				}
 			}
 			
-			// fin pause
+			// fin pause		
 			
 			if(!FlxG.paused)
 				temps += FlxG.elapsed;
@@ -310,29 +336,45 @@ package lucyds {
 		
 		public function mort() : void
 		{
+			var ratioDbT : Number = nbWin/nbDbT;
+			var ratioDbF : Number = nbWin/nbDbF;
+			var ratioDbM : Number = nbWin/nbDbM;
+			
 			if(tempsDepart <= 0)
 				if(dByTime > 0)
-					dByTime -= 0.1;
+				{
+					nbDbT += 1;
+					dByTime = ratioDbT;
+				}
 			
 			if(groundMap.getTile((lucie.x+9)/32, (lucie.y+30)/32) == 0)
 				if(dByFloor > 0)
-					dByFloor -= 0.05;
+				{
+					nbDbF += 1;
+					dByFloor = ratioDbF;
+				}
 			
 			if(FlxG.overlap(lucie, monsters))
 				if(dByMonster > 0)
-					dByMonster -= 0.1;
+				{
+					nbDbM += 1;
+					dByMonster = ratioDbM;
+				}
 			
 			lucie.kill();
 			lightLucie.kill();
 			
 			var levelPlayed : Boolean = true;
 			
-			gameSave.data.dByFloor = dByFloor;
-			gameSave.data.dByMonster = dByMonster;
-			gameSave.data.dByTime = dByTime;
-			gameSave.data.mazeMin = mazeMin;
-			gameSave.data.mazeMax = mazeMax;
-			gameSave.data.levelPlayed = levelPlayed;
+			gameSave.data.dByFloor 		= dByFloor;
+			gameSave.data.dByMonster 	= dByMonster;
+			gameSave.data.dByTime 		= dByTime;
+			gameSave.data.mazeMin 		= mazeMin;
+			gameSave.data.mazeMax		= mazeMax;
+			gameSave.data.nbDbT 		= nbDbT;
+			gameSave.data.nbDbF 		= nbDbF;
+			gameSave.data.nbDbM 		= nbDbM;
+			gameSave.data.levelPlayed 	= levelPlayed;
 			
 			gameSave.close();
 			FlxG.flash(0xffffffff, 1.5);
@@ -341,19 +383,27 @@ package lucyds {
 		
 		public function vivant() : void
 		{
-			dByFloor += 0.01;
-			dByMonster += 0.1;
-			dByTime += 0.1;
-			mazeMin += 25;
-			mazeMax += 25;
+			var ratioWin : Number = nbWin/(nbDbT+nbDbF+nbDbM+nbWin);
+			var ratioDbT : Number = nbWin/nbDbT;
+			var ratioDbF : Number = nbWin/nbDbF;
+			var ratioDbM : Number = nbWin/nbDbM;
+			
+			nbWin 		+= 1;
+			dByFloor 	= ratioDbF;
+			dByMonster 	= ratioDbM;
+			dByTime		= ratioDbT;
+			mazeMin 	+= 10*ratioWin;
+			mazeMax 	+= 10*ratioWin;
+			
 			var levelPlayed : Boolean = true;
 			
-			gameSave.data.dByFloor = dByFloor;
-			gameSave.data.dByMonster = dByMonster;
-			gameSave.data.dByTime = dByTime;
-			gameSave.data.mazeMin = mazeMin;
-			gameSave.data.mazeMax = mazeMax;
-			gameSave.data.levelPlayed = levelPlayed;
+			gameSave.data.dByFloor 		= dByFloor;
+			gameSave.data.dByMonster 	= dByMonster;
+			gameSave.data.dByTime		= dByTime;
+			gameSave.data.mazeMin 		= mazeMin;
+			gameSave.data.mazeMax 		= mazeMax;
+			gameSave.data.nbWin 		= nbWin;
+			gameSave.data.levelPlayed 	= levelPlayed;
 				
 			gameSave.close();
 			FlxG.paused = true;

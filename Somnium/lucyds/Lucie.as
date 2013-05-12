@@ -5,7 +5,7 @@ package lucyds
 	
 	public class Lucie extends FlxSprite
 	{		
-		[Embed(source="assets/img/Cryus2.png")]
+		[Embed(source="assets/img/Rosa.png")]
 		private var lucie : Class;
 		
 		private static const VELOCITY : uint = 250;
@@ -42,12 +42,12 @@ package lucyds
 		public function Lucie(startX : int, startY : int):void
 		{
 			super(32*startX, 32*startY);
-			loadGraphic(lucie, true, true, 32, 48, true);
+			loadGraphic(lucie, true, true, 24, 39, true);
 			
 			this.width = 14;
 			this.height = 16;
-			this.offset.x = 9;
-			this.offset.y = 30;
+			this.offset.x = 5;
+			this.offset.y = 25;
 			
 			addAnimation("Walk Left", [4,5,6,7], 7, true);
 			addAnimation("Idle Left", [4], 0, false);

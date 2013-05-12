@@ -13,9 +13,7 @@ package lucyds {
 		private static var numCasesW	: uint = 100;
 		private static var numCasesH	: uint = 50;
 		
-		private static var distanceEnd : int = 1000;
-		
-		public var tempsDest		: Number 						= 0.14 / PlayState.dByFloor;
+		public var tempsDest		: Number 						= 0.15 / PlayState.dByFloor;
 		public var lowLimit			: int							= LOWLIMIT + PlayState.mazeMin;
 		public var highLimit		: int							= HIGHLIMIT + PlayState.mazeMax;
 		
@@ -23,8 +21,8 @@ package lucyds {
 		private var fieldValues 	: Vector.<Vector.<uint>>		= new Vector.<Vector.<uint>>(numCasesW);
 		private var colorFields 	: Vector.<Vector.<FlxSprite>> 	= new Vector.<Vector.<FlxSprite>>(numCasesW);
 		public var numFields 		: uint							= 0;
-		public var startX			: uint 							= (numCasesW - 2) * FlxG.random();  //1;
-		public var startY			: uint 							= (numCasesH - 2) * FlxG.random();  //1 + 30 * FlxG.random();
+		public var startX			: uint;
+		public var startY			: uint;
 		private	var endX			: uint;
 		private var endY			: uint;
 		public var fieldValuations  : Vector.<Vector.<uint>>;
@@ -36,28 +34,32 @@ package lucyds {
 		
 		public function Maze():void
 		{
+			defineStart();
 			defineEnd();
+			
 			createPathBetween(startX, startY, endX, endY, lowLimit, highLimit);
 			createExtraConections();
-			fieldValuations = valuateFields(endX, endY);
 			
+			fieldValuations = valuateFields(endX, endY);
 			fields = rotateMatrix(fields);
 			fieldValues = rotateMatrix(fieldValues);
 			
 			create3D();
+			
 			firstRealBN = realBN();
 			trace(firstRealBN);
+			
 			var dataStr:String = convertMatrixToStr(fields);
 			this.loadMap(dataStr, mazeTiles, 32, 32);
-			start();
 			this.setTileProperties(1, FlxObject.NONE); // collisions
 			this.setTileProperties(6, FlxObject.NONE);
 			this.setTileProperties(7, FlxObject.NONE);
 			this.setTileProperties(0, FlxObject.ANY);
+			start();
 		}
 		
 		override public function update():void 
-		{
+		{			
 			var realBiggestNumber : int = realBN();
 			counter += FlxG.elapsed;
 			var tempsDestFin : Number = (tempsDest - PlayState.lucie.jump*0.03);
@@ -72,7 +74,7 @@ package lucyds {
 			var YY			: Number 	= PlayState.lucie.y - endY*32;
 			var distance 	: Number	= Math.sqrt( XX * XX + YY * YY );
 			
-			if ((firstRealBN/2 > realBiggestNumber) || (distance < 100))
+			if ((firstRealBN/2 > realBiggestNumber) || ((distance < 100) && PlayState.lightLucie.alive))
 				stop();
 		}
 		
@@ -126,20 +128,29 @@ package lucyds {
 			numFields = 0;
 			
 			var dispertion : Boolean = false;
-			while (numTries < 200 && (numFields < lowLimit || numFields > highLimit) && dispertion == false)
+			
+			if(numTries < 50)
 			{
-				initPath();
-				createPath(startX, startY, endX, endY);
-				
-				if(numFields/2 > realBN())
-					dispertion = false;
-				else
-					dispertion = true;
+				while ((numFields < lowLimit || numFields > highLimit) && dispertion == false)
+				{
+					initPath();
+					createPath(startX, startY, endX, endY);
 					
-				++numTries;
-				trace("NumTries = ", numTries);
+					if(numFields/2 > realBN())
+						dispertion = false;
+					else
+						dispertion = true;
+						
+					++numTries;
+					trace("NumTries = ", numTries);
+				}	
 			}
-			trace (numFields);
+			
+			else
+			{
+				defineEnd();
+				numTries = 0;
+			}
 		}
 		
 		private function createExtraConections() : void
@@ -181,7 +192,7 @@ package lucyds {
 			
 			// Cas d'arret KO
 			if (startX < 1 || startX >= numCasesW - 1|| startY < 1 || startY >= numCasesH - 1 || // test bords
-				fields[startX][startY] || // test case courante
+				fields[startX][startY] == 1 || // test case courante
 				!testAdjacents(startX, startY) || // test adjacents
 				!testDiagonals(startX, startY)) // teste diagonales.
 			{
@@ -225,15 +236,18 @@ package lucyds {
 		
 		private function testAdjacents(x : int, y : int) : Boolean
 		{
-			return countAdjacents(x, y) <= 1;
+			if (countAdjacents(x, y) <= 1)
+				return true;
+			else
+				return false;
 		}
 		
 		private function countAdjacents(x : int, y : int) : uint
 		{
-			return int(fields[x + 1][y]) + 
-				int(fields[x][y + 1]) +
-				int(fields[x][y - 1]) + 
-				int(fields[x - 1][y]);
+			return	int(fields[x + 1][y]) + 
+					int(fields[x][y + 1]) +
+					int(fields[x][y - 1]) + 
+					int(fields[x - 1][y]);
 		}
 		
 		private function testDiagonals(startX : int, startY : int) : Boolean
@@ -389,6 +403,7 @@ package lucyds {
 						this.setTile(y, x, 0);
 						fields[x][y] = 0;
 						PlayState.spawnEmitter(y*32, x*32);
+						
 						// detruit les rebords
 						
 						if(fields[x+1][y] != 1)
@@ -402,19 +417,60 @@ package lucyds {
 							colorFields[y][x].kill(); 
 					}
 		}
-		
-		private function defineEnd () : void
+		private function defineStart() : void
 		{
-			do
-			{
-				var endX : int = 1 + (numCasesW - 2) * FlxG.random();
-				var endY : int = 1 + (numCasesH - 2) * FlxG.random();				
-			} while(Math.sqrt(startX * endX + startY * endY ) > distanceEnd);
+			var rand : Number = FlxG.random();
 			
+			if(rand < 0.25)
+			{
+				startX = 1;
+				startY = FlxG.random()* (numCasesH - 2);
+			}
+			else if (rand < 0.5)
+			{
+				startX = numCasesW - 2;
+				startY = FlxG.random()* (numCasesH - 2);
+			}
+			else if (rand < 0.75)
+			{
+				startY = 1;
+				startX = FlxG.random()* (numCasesW - 2);
+			}
+			else
+			{
+				startY = numCasesH - 2;
+				startX = FlxG.random()* (numCasesW - 2);
+			}			
 			trace(startX, startY);
+		}
+		
+		
+		private function defineEnd() : void
+		{					
+			if(startX == 1)
+			{
+				endX = numCasesW - 2;
+				endY = FlxG.random()* (numCasesH - 2);
+			}
+			
+			if(startX == numCasesW - 2)
+			{
+				endX = 1;
+				endY = FlxG.random()* (numCasesH - 2);
+			}
+			
+			if(startY == 1)
+			{
+				endY = numCasesH - 2;
+				endX = FlxG.random()* (numCasesW - 2);
+			}
+			
+			if(startY == numCasesH - 2)
+			{
+				endY = 1;
+				endX = FlxG.random()* (numCasesW - 2);
+			}
 			trace(endX, endY);
-			this.endX = endX;
-			this.endY = endY;
 		}
 	}
 }
